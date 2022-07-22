@@ -1,0 +1,257 @@
+---
+title: "Session01"
+author: "Susumu Shikano"
+date: "Last compiled at `r format(Sys.Date(), '%d. %B %Y')`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(utils)
+
+```
+
+
+
+
+## Sampling with replacement
+
+
+Concerning the counting rules, we learned two theorems about sampling with and without replacement. In R, we can conduct the corresponding sampling using sample function.
+
+Consider that we have a population consisting persons with different ideological orientations. 
+
+
+```{r}
+
+population <- c("Conservative","Liberal","Socialist","Communist","Christian Democrat","Green","Rightwing Populist")
+
+population
+
+```
+
+
+From this population, we wish to draw a sample with a certain size with replacement.
+
+
+```{r}
+selected <- sample(population,size=4,replace = TRUE)
+
+print("Draw 1")
+selected
+
+```
+
+We can repeat this process multiple times:
+
+
+
+```{r}
+
+for (i in 1:5){
+   selected <- sample(population,size=4,replace = TRUE)
+   print(paste("Draw",i+1))
+   print(selected)
+   
+}
+
+```
+
+
+In the drawn samples, you can find some cases where a certain person is drawn more than once. 
+
+Since these results are based on random draws, the results vary if you repeat to run the code.
+
+If you wish to replicate a certain random draw, you can set the random seed:
+
+```{r}
+set.seed(12345)
+
+selected <- sample(population,size=4,replace = TRUE)
+
+print("Draw 7")
+selected
+
+```
+
+For this draw, you will always obtain the same result. If you change the seed (12345) to another number, you will obtain another result.
+
+
+
+## Sampling without replacement
+
+
+We can also draw a sample from the same population *without* replacement.
+
+```{r}
+
+selected <- sample(population,size=4,replace = FALSE)
+print("Draw 1")
+selected
+
+```
+
+We can again repeat the random draws many times.
+
+
+```{r}
+
+for (i in 1:5){
+   selected <- sample(population,size=4,replace = FALSE)
+   print(paste("Draw",i+1))
+   print(selected)
+   
+}
+
+```
+
+
+This  time, no sample includes a single person many times. 
+
+
+To count all possible outcomes, we can use: $n(n-1)\cdots (n-k+1)$. For the above draws: $7 \cdot 6 \cdots 4 = 840$.
+
+```{r}
+prod(7:4)
+```
+
+
+This can be also obtained by using the factorials. To do this, we can rewrite the above formula as: $$n(n-1)\cdots (n-k+1) = \frac{n(n-1)\cdots 1}{(n-k)(n-k-1)\cdots 1} = \frac{n!}{(n-k)!}$$: 
+
+
+```{r}
+factorial(7)/factorial(7-4)
+```
+
+
+Now, we increase the sample  size:
+
+```{r error = TRUE}
+
+selected <- sample(population,size=10,replace = FALSE)
+print("Draw 7")
+selected
+
+```
+
+Here, we do not obtain any sample. The sample size exceeds the population size, therefore we cannot draw a sample without replacement.
+
+
+## ~~Birthday~~Ideology problem
+
+
+Consider that all persons in the world has one of the above ideological orientation. It is random and equally likely which of 7 possible ideological orientations an individual has. 
+
+If there are two randomly selected persons, what is the probability that both persons share the same ideological orientation? 
+
+To obtain the probabability, we should  first compute the opposite probability: the one that both persons have different birthdays. More specifically, we can count how many outcomes we have for two persons' ideological orientation independently whether they share their orientations (sampling with replacement). Then we can count how many outcomes in which both have different ideological orientations (sampling without replacement):
+
+```{r}
+k <- 2
+1-prod(7:(7-k+1))/7^k
+```
+
+We can check this probability by repeating the random sampling:
+
+```{r}
+n.sim <- 10000
+
+max.freq <- rep(NA,n.sim)
+for (i in 1:n.sim){
+  selected <- sample(population,size=2,replace = TRUE)
+  max.freq[i] <- max(table(selected))
+}
+
+table(max.freq)
+
+```
+
+Among `r n.sim` simulations, we have the same ideological orientations at both drawn persons for `r sum(table(max.freq)[2:length(table(max.freq))])` times. This chance is close to the probability computed above. Note that both probabilities are  not perfectly identical since the latter was a result of only finitely repeated random draws. If we increase the number of simulations, the latter converges to the former.  
+
+
+The calculation above was based on $k=2$. We can also repeat the calculation with different values for $k$:
+
+```{r}
+all.prob <- NULL
+for (k in 1:10){
+  all.prob <- rbind(all.prob,c(k,  1-prod(7:(7-k+1))/7^k,7^k, prod(7:(7-k+1))))
+}
+colnames(all.prob) <- c("k","Prob","With","Without")
+
+
+plot(all.prob[,1],all.prob[,2],
+     xlab="k (sample size)",ylab="Probability")
+abline(h=0.5,lty=2)
+
+all.prob
+
+```
+
+The figure shows that from the sample size of 4, we have more than 50% of probability that two share the same ideological orientation.
+
+
+
+
+
+
+
+There is a ready-made function for this problem. 
+
+```{r}
+pbirthday(2, classes = 7) 
+qbirthday(0.5, classes = 7)
+```
+
+
+
+The task above is equivalent to the famous birthday problem about the probability that there is persons with the same birthday among a certain number of persons.  
+
+
+```{r}
+
+pbirthday(20)
+qbirthday(0.5)
+```
+
+You can even compute the probability that there is a group of more than 2 persons with the same birthday:
+
+```{r}
+pbirthday(20,coincident=3)
+```
+
+
+
+## Combination; Binomial coefficients
+
+Suppose that we wish to draw 3 elements from the above population (with 7 elements) without replacement. How many possible combinations do we have? This can be calculated by using the binomial coefficient: $$  \binom{n}{k} = \frac{n (n-1) \cdots (n-k+1)}{k!} = \frac{n!}{(n-k)!k!}$$
+
+
+```{r}
+
+factorial(7)/(factorial(3)*factorial(4))
+
+
+```
+
+
+Or, we can use a ready-made function:
+
+
+```{r}
+
+choose(7,3)
+
+
+```
+
+Which `r choose(7,3)` combinations do we have? This can be obtained by using the combn function (util package):
+
+
+```{r}
+
+combn(population,m=3)
+
+```
+
+
