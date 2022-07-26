@@ -1,0 +1,141 @@
+---
+title: "Session03"
+author: "Susumu Shikano"
+date: "Last compiled at `r format(Sys.Date(), '%d. %B %Y')`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Binomial distribution
+
+
+We can start to observe the PMF of a binomial distribution:
+
+
+```{r }
+
+p <- 0.5
+n <- 4
+
+print(pmf <- dbinom(0:n,size=n,prob=p))
+
+```
+
+These values are the probablity of each possible outcomes: 0,1,2,...,n.
+
+
+```{r}
+
+plot(0:n,pmf,type="h",
+     ylab="P(X)",xlab="X",ylim=c(0,0.5))
+
+```
+
+We can also check the CDF:
+
+```{r}
+cdf <- pbinom(0:n,size=n,prob=p)
+
+cbind(pmf,cdf)
+
+```
+
+It is evident that CDF is the cummulated PMF.
+
+Now, we can also generate random variables by using the same binonial distribution:
+
+```{r}
+sample.size <- 100
+
+random.var <- rbinom(sample.size,size=n,prob=p)
+
+par(mfrow=c(1,2))
+
+plot(table(random.var)/length(random.var),type="h",
+     ylab="P(X)",xlab="X",main="randomly generated")
+
+plot(0:n,pmf,type="h",
+     ylab="P(X)",xlab="X",main="theoretical",
+     ylim=c(0,max(pmf)))
+```
+
+They are not perfectly identical, but if you increase the sample size, both the distribution of the randomly generated variable converges to the theoretical one.
+
+If you further increase the number of trials (n), the distribution converges to a normal distribution.
+
+
+### Expectation and further moments
+
+The expectation and variance of the binomial distribution is known. The mean value can be obtained by using PMF:
+
+```{r}
+
+sum(c(0:n)*pmf)
+
+```
+
+This corresponds always to $n \times p$. The variance is:
+
+```{r}
+
+sum( (c(0:n) - (n*p))^2   *pmf)
+
+```
+
+
+The result always corresponds to $n \times p \times (1-p)$. 
+
+
+These results can be also approximated with the randomly generatd variable:
+
+```{r}
+mean(random.var)
+
+mean((random.var-mean(random.var))^2)
+```
+
+Again these values are not perfectly identical with the above results, but they will be closer if we increase the sample size.
+
+
+### Independence of two binomial distributions
+
+We generate another random variable using another binomial distribution independently:
+
+```{r}
+
+random.var2 <- rbinom(sample.size,size=n+5,prob=p/2)
+
+
+```
+
+We can observe both variables in their probabilities:
+
+```{r}
+
+table(random.var)/(length(random.var))
+table(random.var2)/(length(random.var2))
+
+
+```
+
+Let's observe the probability that both random variables have the value 1:
+
+
+```{r}
+
+mean(random.var==1 & random.var2==1)
+
+```
+
+This value is close to the product of the probability that each variable has the value 1:
+
+```{r}
+
+mean(random.var==1) * mean(random.var2==1)
+
+
+```
+
