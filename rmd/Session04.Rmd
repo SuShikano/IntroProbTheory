@@ -1,0 +1,332 @@
+---
+title: "Session04"
+author: "Susumu Shikano"
+date: "Last compiled at `r format(Sys.Date(), '%d. %B %Y')`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(mvtnorm)
+```
+
+
+## Bivariate normal distributions
+
+First, we specify the parameter values
+
+```{r}
+means <- c(1,2)
+vars <- c(2,4)
+cov <- 1.5
+```
+
+Based on the specified parameters, we set up the bivariate normal distribution and compute the densities for different value combinations of X and Y:
+
+```{r}
+
+cov.mat <- diag(vars)
+cov.mat[1,2] <- cov.mat[2,1] <- cov
+
+bivnorm <- function(x,y){
+}
+
+x <- y <- seq(-5,7,by=0.25)
+
+joint.densities <- matrix(NA,nrow=length(x),ncol=length(y))
+
+for (i.x in 1:length(x)){
+  for (i.y in 1:length(y)){
+    joint.densities[i.x,i.y] <-   dmvnorm(c(x[i.x],y[i.y]),mean = means,sigma=cov.mat)
+  }
+}
+
+colnames(joint.densities) <- y
+rownames(joint.densities) <- x
+
+
+```
+
+
+
+
+We can plot the joint distribution by using a contour plot:
+
+
+```{r}
+contour(x, y, joint.densities,xlab="X",ylab="Y")
+abline(v=means[1],h=means[2],lty=2)
+
+```
+
+
+
+
+... or 3D surface:
+
+
+```{r}
+par(mfrow=c(1,2))
+
+persp(x, y, joint.densities,zlab="Density",xlab="X",ylab="Y",
+      theta = -20, phi=30,
+      col = "lightblue", shade = 0.95,border = "darkgrey",
+      expand = 0.5,box=TRUE,
+      ltheta = 25,r = 2,
+      ticktype = "detailed")
+
+persp(x, y, joint.densities,zlab="Density",xlab="X",ylab="Y",
+      theta = -50, phi=30,
+      col = "lightblue", shade = 0.95,border = "darkgrey",
+      expand = 0.5,box=TRUE,
+      ltheta = 25,r = 2,
+      ticktype = "detailed")
+
+```
+
+### Conditional probabilities
+
+Let's consider the conditional probability of Y given X=-1. You can just pick up the corresponding densities from the joint distribution above and plot it:
+
+
+```{r}
+
+given.x <- -1
+
+sub.joint.densities <- joint.densities[as.numeric(rownames(joint.densities))==given.x,]
+
+par(mfrow=c(1,2))
+
+contour(x, y, joint.densities,xlab="X",ylab="Y")
+abline(v=means[1],h=means[2],lty=2)
+abline(v=given.x,col="red")
+
+plot(y, sub.joint.densities ,type="l",ylab="density?",xlab="Y")
+
+```
+
+
+The right-hand panel is however not probability distribution since it is not normalized. This has be normalized by dividing by $f_X(x)$.
+
+How can we obtain $f_X(x)$? One possibility is to use the law of total probability, which however includes an integral calculation. To avoid this, we can  generate random numbers based on the joint distribution, based on which we can obtain the marginal distribution of (X). Then we obtain the density for the value $x$:
+
+
+```{r}
+
+n.sample <- 100000
+
+random.var <-  rmvnorm(n.sample,mean = means,sigma=cov.mat)
+
+hist(random.var[,1],main="Marginal dist of X",freq=FALSE,xlab="X")
+this.norm <- function(x) dnorm(x,mean=mean(random.var[,1]),sd=sd(random.var[,1]))
+curve(this.norm,add=T)
+abline(v=given.x,col="red")
+
+
+print(fXx <- this.norm(given.x))
+
+```
+
+By using the obtained value, we can normalize the above distribution:
+
+```{r}
+
+par(mfrow=c(1,2))
+
+plot(y, sub.joint.densities ,type="l",ylab="density?",xlab="Y",main="before normalization")
+
+plot(y, sub.joint.densities/fXx ,type="l",ylab="density",xlab="Y",main="after normalization")
+
+```
+
+
+
+## Law of large numbers
+
+We can visualize the law of large numbers by doing simulation. More concretely, we repeatedly conduct an random experiment with two outcomes (e.g. coin flipping) and keep to compute how often we obtain one outcome.
+
+
+```{r}
+
+p <- 0.5
+
+max.iter <- 1000
+n.chains <- 5
+
+draws <- rbinom(max.iter,size=1,p=p)
+running.results <- cumsum(draws)/(1:max.iter)
+
+
+```
+
+Below you can see the share of the outcome of the interest in the course of repeated trials:
+
+```{r}
+
+plot(1:max.iter,running.results,type="l",col="grey",ylim=c(0,1),
+     xlab="Number of trials",ylab="Proportion",
+     main=paste("Probability =",p))
+abline(h=p,lty=3)
+for (i.chain in 2:n.chains){
+  draws <- rbinom(max.iter,size=1,p=p)
+  running.results <- cumsum(draws)/(1:max.iter)
+  
+  par(new=T)
+  plot(1:max.iter,running.results,type="l",
+       col=c("grey","red","blue","green","pink")[i.chain],
+       ylim=c(0,1),
+       ann=F,axes=F)
+}
+
+```
+
+You can here clearly see that in the course of the time, the observed share of the interested outcome converges to the true share (`r p`). Note that the share is a special case of the mean value, therefore the law of large numbers is valid here. 
+
+
+
+## Central Limit Theorem
+
+
+First generate a population with two extreme values.
+
+```{r, echo = TRUE}
+
+pop <- rbeta(100000,0.6,0.4)
+hist(pop,main="Generated population")
+
+```
+
+You can check the mean and variance of this population:
+
+```{r}
+pop.mean <- mean(pop)
+pop.var <- mean((pop-mean(pop))^2)
+
+pop.mean
+pop.var
+```
+
+From this population, we can draw multiple samples with size of 2, calculate the sample sum and observe its distribution.
+
+```{r, echo = TRUE}
+n.iter <- 1000
+sample.size <- 2
+all.sample.sum <- rep(NA,n.iter)
+for (i in 1:n.iter){
+  this.sample <- sample(pop,size=sample.size)
+  this.sample.sum <- sum(this.sample)
+  all.sample.sum[i] <- this.sample.sum
+}
+
+plot(density(all.sample.sum,from=0,to=sample.size),
+     main=paste0("Sum of the random draws (n=",sample.size,")"))
+par(new=T)
+this.norm <- function(x) dnorm(x,
+                               mean=pop.mean*sample.size,
+                               sd=sqrt(sample.size*pop.var))
+curve(this.norm,0,sample.size,add=T,col="blue")
+mean(all.sample.sum)
+var(all.sample.sum)
+
+```
+
+From this population, we can draw multiple samples with size of 10, calculate the sample sum and observe its distribution.
+
+```{r, echo = TRUE}
+n.iter <- 1000
+sample.size <- 10
+all.sample.sum <- rep(NA,n.iter)
+for (i in 1:n.iter){
+  this.sample <- sample(pop,size=sample.size)
+  this.sample.sum <- sum(this.sample)
+  all.sample.sum[i] <- this.sample.sum
+}
+
+plot(density(all.sample.sum,from=0,to=sample.size),
+     main=paste0("Sum of the random draws (n=",sample.size,")"))
+par(new=T)
+this.norm <- function(x) dnorm(x,
+                               mean=pop.mean*sample.size,
+                               sd=sqrt(sample.size*pop.var))
+curve(this.norm,0,sample.size,add=T,col="blue")
+mean(all.sample.sum)
+var(all.sample.sum)
+
+```
+
+From this population, we can draw multiple samples with size of 30, calculate the sample sum and observe its distribution.
+
+```{r, echo = TRUE}
+n.iter <- 1000
+sample.size <- 30
+all.sample.sum <- rep(NA,n.iter)
+for (i in 1:n.iter){
+  this.sample <- sample(pop,size=sample.size)
+  this.sample.sum <- sum(this.sample)
+  all.sample.sum[i] <- this.sample.sum
+}
+
+plot(density(all.sample.sum,from=0,to=sample.size),
+     main=paste0("Sum of the random draws (n=",sample.size,")"))
+par(new=T)
+this.norm <- function(x) dnorm(x,
+                               mean=pop.mean*sample.size,
+                               sd=sqrt(sample.size*pop.var))
+curve(this.norm,0,sample.size,add=T,col="blue")
+mean(all.sample.sum)
+var(all.sample.sum)
+```
+
+From the population, we can draw multiple samples with size of 50, calculate the sample sum and observe its distribution.
+
+```{r, echo = TRUE}
+n.iter <- 1000
+sample.size <- 50
+all.sample.sum <- rep(NA,n.iter)
+for (i in 1:n.iter){
+  this.sample <- sample(pop,size=sample.size)
+  this.sample.sum <- sum(this.sample)
+  all.sample.sum[i] <- this.sample.sum
+}
+
+plot(density(all.sample.sum,from=0,to=sample.size),
+     main=paste0("Sum of the random draws (n=",sample.size,")"))
+par(new=T)
+this.norm <- function(x) dnorm(x,
+                               mean=pop.mean*sample.size,
+                               sd=sqrt(sample.size*pop.var))
+curve(this.norm,0,sample.size,add=T,col="blue")
+mean(all.sample.sum)
+var(all.sample.sum)
+```
+
+
+From the population, we can draw multiple samples with size of 100, calculate the sample sum and observe its distribution.
+
+```{r, echo = TRUE}
+n.iter <- 1000
+sample.size <- 100
+all.sample.sum <- rep(NA,n.iter)
+for (i in 1:n.iter){
+  this.sample <- sample(pop,size=sample.size)
+  this.sample.sum <- sum(this.sample)
+  all.sample.sum[i] <- this.sample.sum
+}
+
+plot(density(all.sample.sum,from=0,to=sample.size),
+     main=paste0("Sum of the random draws (n=",sample.size,")"))
+par(new=T)
+this.norm <- function(x) dnorm(x,
+                               mean=pop.mean*sample.size,
+                               sd=sqrt(sample.size*pop.var))
+curve(this.norm,0,sample.size,add=T,col="blue")
+mean(all.sample.sum)
+var(all.sample.sum)
+```
+
+
+Above, with increasing number of observations, the distribution of the sample sum becomes closer to a normal distribution. And the mean of this sample sum is identical with the population mean, if we draw an infinitely large number of samples. The variance is identical with the population variance times the sample size.    
+
+
+
