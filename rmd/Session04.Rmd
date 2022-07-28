@@ -212,22 +212,22 @@ From this population, we can draw multiple samples with size of 2, calculate the
 ```{r, echo = TRUE}
 n.iter <- 1000
 sample.size <- 2
-all.sample.sum <- rep(NA,n.iter)
+all.sample.mean <- rep(NA,n.iter)
 for (i in 1:n.iter){
   this.sample <- sample(pop,size=sample.size)
-  this.sample.sum <- sum(this.sample)
-  all.sample.sum[i] <- this.sample.sum
+  this.sample.mean <- mean(this.sample)
+  all.sample.mean[i] <- this.sample.mean
 }
 
-plot(density(all.sample.sum,from=0,to=sample.size),
-     main=paste0("Sum of the random draws (n=",sample.size,")"))
+plot(density(all.sample.mean,from=0,to=1),
+     main=paste0("Sample mean (n=",sample.size,")"))
 par(new=T)
 this.norm <- function(x) dnorm(x,
-                               mean=pop.mean*sample.size,
-                               sd=sqrt(sample.size*pop.var))
-curve(this.norm,0,sample.size,add=T,col="blue")
-mean(all.sample.sum)
-var(all.sample.sum)
+                               mean=pop.mean,
+                               sd=sqrt(pop.var/sample.size))
+curve(this.norm,0,1,add=T,col="blue")
+mean(all.sample.mean)
+var(all.sample.mean)
 
 ```
 
@@ -236,22 +236,22 @@ From this population, we can draw multiple samples with size of 10, calculate th
 ```{r, echo = TRUE}
 n.iter <- 1000
 sample.size <- 10
-all.sample.sum <- rep(NA,n.iter)
+all.sample.mean <- rep(NA,n.iter)
 for (i in 1:n.iter){
   this.sample <- sample(pop,size=sample.size)
-  this.sample.sum <- sum(this.sample)
-  all.sample.sum[i] <- this.sample.sum
+  this.sample.mean <- mean(this.sample)
+  all.sample.mean[i] <- this.sample.mean
 }
 
-plot(density(all.sample.sum,from=0,to=sample.size),
-     main=paste0("Sum of the random draws (n=",sample.size,")"))
+plot(density(all.sample.mean,from=0,to=1),
+     main=paste0("Sample mean (n=",sample.size,")"))
 par(new=T)
 this.norm <- function(x) dnorm(x,
-                               mean=pop.mean*sample.size,
-                               sd=sqrt(sample.size*pop.var))
-curve(this.norm,0,sample.size,add=T,col="blue")
-mean(all.sample.sum)
-var(all.sample.sum)
+                               mean=pop.mean,
+                               sd=sqrt(pop.var/sample.size))
+curve(this.norm,0,1,add=T,col="blue")
+mean(all.sample.mean)
+var(all.sample.mean)
 
 ```
 
@@ -260,22 +260,22 @@ From this population, we can draw multiple samples with size of 30, calculate th
 ```{r, echo = TRUE}
 n.iter <- 1000
 sample.size <- 30
-all.sample.sum <- rep(NA,n.iter)
+all.sample.mean <- rep(NA,n.iter)
 for (i in 1:n.iter){
   this.sample <- sample(pop,size=sample.size)
-  this.sample.sum <- sum(this.sample)
-  all.sample.sum[i] <- this.sample.sum
+  this.sample.mean <- mean(this.sample)
+  all.sample.mean[i] <- this.sample.mean
 }
 
-plot(density(all.sample.sum,from=0,to=sample.size),
-     main=paste0("Sum of the random draws (n=",sample.size,")"))
+plot(density(all.sample.mean,from=0,to=1),
+     main=paste0("Sample mean (n=",sample.size,")"))
 par(new=T)
 this.norm <- function(x) dnorm(x,
-                               mean=pop.mean*sample.size,
-                               sd=sqrt(sample.size*pop.var))
-curve(this.norm,0,sample.size,add=T,col="blue")
-mean(all.sample.sum)
-var(all.sample.sum)
+                               mean=pop.mean,
+                               sd=sqrt(pop.var/sample.size))
+curve(this.norm,0,1,add=T,col="blue")
+mean(all.sample.mean)
+var(all.sample.mean)
 ```
 
 From the population, we can draw multiple samples with size of 50, calculate the sample sum and observe its distribution.
@@ -283,22 +283,22 @@ From the population, we can draw multiple samples with size of 50, calculate the
 ```{r, echo = TRUE}
 n.iter <- 1000
 sample.size <- 50
-all.sample.sum <- rep(NA,n.iter)
+all.sample.mean <- rep(NA,n.iter)
 for (i in 1:n.iter){
   this.sample <- sample(pop,size=sample.size)
-  this.sample.sum <- sum(this.sample)
-  all.sample.sum[i] <- this.sample.sum
+  this.sample.mean <- mean(this.sample)
+  all.sample.mean[i] <- this.sample.mean
 }
 
-plot(density(all.sample.sum,from=0,to=sample.size),
-     main=paste0("Sum of the random draws (n=",sample.size,")"))
+plot(density(all.sample.mean,from=0,to=1),
+     main=paste0("Sample mean (n=",sample.size,")"))
 par(new=T)
 this.norm <- function(x) dnorm(x,
-                               mean=pop.mean*sample.size,
-                               sd=sqrt(sample.size*pop.var))
-curve(this.norm,0,sample.size,add=T,col="blue")
-mean(all.sample.sum)
-var(all.sample.sum)
+                               mean=pop.mean,
+                               sd=sqrt(pop.var/sample.size))
+curve(this.norm,0,1,add=T,col="blue")
+mean(all.sample.mean)
+var(all.sample.mean)
 ```
 
 
@@ -307,22 +307,22 @@ From the population, we can draw multiple samples with size of 100, calculate th
 ```{r, echo = TRUE}
 n.iter <- 1000
 sample.size <- 100
-all.sample.sum <- rep(NA,n.iter)
+all.sample.mean <- rep(NA,n.iter)
 for (i in 1:n.iter){
   this.sample <- sample(pop,size=sample.size)
-  this.sample.sum <- sum(this.sample)
-  all.sample.sum[i] <- this.sample.sum
+  this.sample.mean <- mean(this.sample)
+  all.sample.mean[i] <- this.sample.mean
 }
 
-plot(density(all.sample.sum,from=0,to=sample.size),
-     main=paste0("Sum of the random draws (n=",sample.size,")"))
+plot(density(all.sample.mean,from=0,to=1),
+     main=paste0("Sample mean (n=",sample.size,")"))
 par(new=T)
 this.norm <- function(x) dnorm(x,
-                               mean=pop.mean*sample.size,
-                               sd=sqrt(sample.size*pop.var))
-curve(this.norm,0,sample.size,add=T,col="blue")
-mean(all.sample.sum)
-var(all.sample.sum)
+                               mean=pop.mean,
+                               sd=sqrt(pop.var/sample.size))
+curve(this.norm,0,1,add=T,col="blue")
+mean(all.sample.mean)
+var(all.sample.mean)
 ```
 
 
