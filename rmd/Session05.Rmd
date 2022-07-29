@@ -28,7 +28,7 @@ By cumulating the intervals, we can reconstruct the event's timing:
 event.timing <- cumsum(event.interval)
 
 plot(event.timing,rep(1,length(event.timing)),type="h",main="Timing of individual events",
-     xlab="Time")
+     xlab="Time",ylab="freq")
 ```
 
 We now count every two units of the time scale frequencies of events:
