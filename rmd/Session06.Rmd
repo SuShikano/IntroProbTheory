@@ -1,0 +1,148 @@
+---
+title: "Session06"
+author: "Susumu Shikano"
+date: "Last compiled at `r format(Sys.Date(), '%d. %B %Y')`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(bbmle)
+
+```
+
+We first load a data set and extract the relevant variables:
+
+```{r}
+load("../data/Statistics_Exam_Anonymous.RData")
+
+
+y <- exam.anonym$points[!is.na(exam.anonym$points)]
+x <- exam.anonym$worksheet_submitted[!is.na(exam.anonym$points)]
+n <- length(y)
+
+```
+
+
+We start with the one parameter model which only has the intercept and the variance of the normal distribution is fixed to 1. We create the likelihood function:
+```{r}
+LL.func <- function(beta){
+  ((-(n/2)*log(2*pi)) - ((1/(2))*sum((y - beta)^2)))
+  #-sum((y - beta)^2)*-1
+}
+
+x.s <- seq(50,80,length=100)
+
+outputs <- rep(NA,length(x.s) )
+for (i in 1:length(x.s)){
+  outputs[i] <- LL.func(x.s[i])
+}
+
+plot(x.s,outputs,type="l", ylab="Log-likelihood",xlab=expression(beta))
+```
+
+You create the inverse function of the the above function since the $mle2()$ function does not maximize, but minimize the function:
+
+```{r}
+
+minusLL.1 <- function(beta){
+  LL.func(beta) *-1
+}
+
+```
+
+By minimizing the function, we obtain the results:
+
+```{r}
+
+fit.1 <- mle2(minusLL.1,list(beta=50))
+summary(fit.1)
+
+```
+
+We can also obtain the maximum value of the log-likelihood function, which can be checked against the plotted likelihood function above:
+
+
+```{r}
+
+print(max.ll <- fit.1@details$value *-1)
+
+plot(x.s,outputs,type="l", ylab="Log-likelihood",xlab=expression(beta))
+abline(h=max.ll,lty=2)
+
+```
+
+
+
+We include in the next model the explanatory variable (number of submitted worksheets):
+
+```{r}
+
+minusLL.2 <- function(beta0, beta1) {
+  ((-(n/2)*log(2*pi)) - ((1/(2))*sum((y - beta0 - beta1*x)^2)))*-1
+  #-sum((y - beta0 - beta1 * x)^2)*-1
+  }
+
+fit.2 <- mle2(minusLL.2,list(beta0=50,beta1=0.5))
+summary(fit.2)
+fit.2@details$value
+
+
+```
+
+
+We can also estimate $\sigma^2$ (variance) as well:
+
+
+
+```{r}
+minusLL.3 <- function(beta0,beta1,sigma2){
+  #((-(n/2)*log(2*pi*sigma2)) - ((1/(2*sigma2))*sum((y - beta0 - beta1*x)^2)))*-1
+  mu <- beta0 + beta1*x
+  ll <- suppressWarnings(dnorm(y,  mean=mu, sd=sqrt(sigma2),log = TRUE))
+  -sum(ll)
+}
+
+fit.3 <- mle2(minusLL.3,list(beta0=50,beta1=0.5,sigma2=3))
+summary(fit.3)
+fit.3@details$value
+
+```
+
+
+We can also use another algorithm to find the maximum likelihood:
+
+```{r}
+fit.3nlm <- mle2(minusLL.3,optimizer="nlm",list(beta0=50,beta1=0.5,sigma2=3))
+summary(fit.3nlm)
+fit.3nlm@details$minimum
+```
+
+
+Now we compare all the models above:
+
+```{r}
+summary(fit.1)
+summary(fit.2)
+summary(fit.3)
+```
+
+
+
+
+Finally, we can compare all above results with the OLS estimates:
+
+```{r}
+summary(lm(y ~ x))
+```
+
+Here some exercises until tomorrow:
+
+* Calculate the log-likelihood ratio for all pairs of the models above.
+* Which specific probability distribution will be used to decide whether to take the restrictive or unrestrictive model? Which threshold value will be compared with the above log-likelihood ratio?
+* Check the results of the ML- (Model 3) and OLS-estimator above whether there are any differences. If yes, consider why.
+
+
+
+
