@@ -176,16 +176,35 @@ d0 <- 0.000001
 ```
 
 
-Based on the prior and data, we can obtain posterior:
+Based on the prior and data, we can obtain posterior $f(\beta,\sigma^2 | y )= f_{N-\Gamma^{-1}}({\mu^*}, {\Sigma^*}, a^*, d^*) $ with:
+
+* $\mu^* = (\Sigma_0^{-1} + x' x )^{-1} ({\Sigma_0^{-1}} {\mu_0}  + x' y )$
 
 ```{r}
+print(mu.star <- solve(solve(sigma0) + t(x.mat)%*%x.mat )%*% (solve(sigma0)%*%mu0 + t(x.mat)%*%y))
 
-mu.star <- solve(solve(sigma0) + t(x.mat)%*%x.mat )%*% (solve(sigma0)%*%mu0 + t(x.mat)%*%y)
+```
 
-sigma.star <- solve(solve(sigma0) + t(x.mat)%*%x.mat )
 
-a.star <- a0 + 0.5*(t(mu0)%*%solve(sigma0)%*%mu0 + t(y)%*%y  - t(mu.star) %*%solve(sigma.star)%*%mu.star)
-d.star <- d0 + n/2
+* $\Sigma^* = (\Sigma_0^{-1} + x' x )^{-1} $
+
+```{r}
+print(sigma.star <- solve(solve(sigma0) + t(x.mat)%*%x.mat ))
+
+```
+
+* $a^* = a_0 + \frac{1}{2}( {\mu'_0} {\Sigma}_0^{-1} {\mu_0} + y'y - {\mu^{*'}} {\Sigma}^{*-1} {\mu^*} )$
+
+```{r}
+print(a.star <- a0 + 0.5*(t(mu0)%*%solve(sigma0)%*%mu0 + t(y)%*%y  - t(mu.star) %*%solve(sigma.star)%*%mu.star))
+
+```
+
+* $d^* = d_0 + \frac{n}{2}$
+
+
+```{r}
+print(d.star <- d0 + n/2)
 
 ```
 
