@@ -1,0 +1,215 @@
+---
+title: "Session06"
+author: "Susumu Shikano"
+date: "Last compiled at `r format(Sys.Date(), '%d. %B %Y')`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Binomial model with discrete prior
+
+```{r}
+ data<- c(10,20)                              # Data: 10 successes in 20 trials
+```
+
+
+We first obtain the posterior by using a discrete prior given the data: `r data[1]` out of `r data[2]` trials are successful. The prior look like as follows: 
+
+```{r}
+ p <- seq(0.05,0.95,by=0.05)
+ prior <- c(1,2,3,4,8,10,10,8,4,3,2,1,1,1,1,1,1,1,1)
+ prior <- prior/sum(prior)
+ plot(p,prior,type="h",
+           main="Discrete prior")
+
+```
+
+The likelihood function is constructed based on the binomial distribution. By multiplying prior and likelihood, subsequently normalizing the product, we can obatin the posterior distribution:
+
+
+```{r}
+ likeli  <- dbinom(data[1],size=data[2],prob=p)   # likelihood based on binomial distribution
+
+ posterior <- prior * likeli                  # posterior = prior times likelihood
+ posterior <- posterior/sum(posterior)        # normalization (sum=1)
+
+par(mfrow=c(1,3))
+ plot(p,prior,type="h",
+           main="Discrete prior")
+
+ plot(p,likeli,type="h",
+           main="Likelihood",ylab="likelihood")
+
+ plot(p,posterior,type="h",
+           main="Posterior")
+
+
+```
+
+
+
+## Conjugacy analysis with beta prior: Beta binomial model
+
+We now move to the continuous prior. More specifically, we use the beta distribution to specify prior. Below, you will find posterior based on three different prior and two different data.
+
+
+```{r}
+par(mfrow=c(2,3))
+
+for (j in 1:2){
+for (i in 1:3){
+
+  if (i==1){
+    a <- 1
+    b <- 1
+  }  
+  if (i==2){
+    a <- 3
+    b <- 1.5
+  }  
+  if (i==3){
+    a <- 13
+    b <- 4
+  }  
+
+
+if (j==1) data <- c(7,3)
+if (j==2) data <- c(14,6)
+
+y.scale <- c(0,5)
+
+
+this.dbeta <- function (x) dbeta(x,a,b)
+curve(this.dbeta,0,1,ylim=y.scale,ylab="density",xlab=expression(pi),
+      main=paste("a=",a," b=",b))
+
+this.dbeta <- function (x) dbeta(x,data[1]+a,data[2]+b)
+curve(this.dbeta,0,1,add=T,col="blue")
+
+abline(v=0.7,lty=2)
+
+if (j==1) legend("topleft",paste(data[1],"out of",sum(data)),bty="n")
+if (j==2) legend("topleft",paste(data[1],"out of",sum(data)),bty="n")
+  
+}
+}
+
+```
+
+
+We can now observe the posterior above more closely and describe in different ways:
+
+```{r}
+for (i.fig in 1:4){
+par(mfrow=c(1,3))
+
+data <- c(7,3)
+y.scale <- c(0,5)
+
+for (i.priors in 1:3){
+  if (i.priors==1) this.prior <- c(1,1)
+  if (i.priors==2) this.prior <- c(3,1.5)
+  if (i.priors==3) this.prior <- c(13,4)
+
+  this.dbeta <- function (x) dbeta(x,data[1]+this.prior[1],data[2]+this.prior[2])
+  curve(this.dbeta,0,1,col="blue",ylim=y.scale,ylab="density",xlab=expression(pi),
+        main=paste0("Prior: a=",this.prior[1],"; b=",this.prior[2]))
+
+  post.a <-data[1]+this.prior[1]
+  post.d <- data[2]+this.prior[2]
+  
+  if (i.fig==1) this.mean <- this.stat <-  (data[1]+this.prior[1])/(sum(this.prior)+sum(data))
+  if (i.fig==2) this.mode <- this.stat <-  (data[1]+this.prior[1] -1)/(sum(this.prior)+sum(data)-2)
+  if (i.fig==3) this.sd <- this.stat <-  sqrt((post.a)*(post.d)/((post.a + post.d + 1)*(post.a + post.d)^2))
+  if (i.fig==1|i.fig==2) lines(rep(this.stat,2),c(0,this.dbeta(this.stat)),lty=2)
+  if (i.fig>=1) text(0,max(y.scale),paste("Mean = ",round(this.mean,3)),pos=4)
+  if (i.fig>=2) text(0,max(y.scale)-.5,paste("Mode = ",round(this.mode,3)),pos=4)
+  if (i.fig>=3) text(0,max(y.scale)-1,paste("SD = ",round(this.sd,3)),pos=4)
+  
+  if (i.fig==4){
+    xvals <- seq(0.5, 1, length=20)             
+    dvals <- this.dbeta(xvals)                  
+    polygon(c(xvals,rev(xvals)),
+            c(rep(0,20),rev(dvals)),col="gray") 
+    #text(0,max(y.scale)-1.5,expression(paste0(Pr(pi>0.5)),"?"),pos=4)
+    over.5 <- mean(ifelse(rbeta(1000,post.a,post.d)>0.5,1,0))
+    text(0.7,2,paste0(round(over.5*100),"%"),pos=4)
+    
+  }
+}
+}
+```
+
+## Regression analysis
+
+
+To conduct the regression analysis, we first read the exam data:
+
+```{r}
+load("../data/Statistics_Exam_Anonymous.RData")
+
+
+y <- exam.anonym$points[!is.na(exam.anonym$points)]
+x <- exam.anonym$worksheet_submitted[!is.na(exam.anonym$points)]
+x.mat <- cbind(1,x)
+
+
+n <- length(y)
+
+```
+
+
+Let's set up the prior:
+
+```{r}
+
+mu0 <- c(0,0)
+
+sigma0 <- rbind(c(0,    10000),
+                c(10000,    0))
+
+a0 <- 0.000001
+d0 <- 0.000001
+```
+
+
+Based on the prior and data, we can obtain posterior:
+
+```{r}
+
+mu.star <- solve(solve(sigma0) + t(x.mat)%*%x.mat )%*% (solve(sigma0)%*%mu0 + t(x.mat)%*%y)
+
+sigma.star <- solve(solve(sigma0) + t(x.mat)%*%x.mat )
+
+a.star <- a0 + 0.5*(t(mu0)%*%solve(sigma0)%*%mu0 + t(y)%*%y  - t(mu.star) %*%solve(sigma.star)%*%mu.star)
+d.star <- d0 + n/2
+
+```
+
+Here, we have posterior mean for $\beta_0$ and $\beta_1$ in the joint distribution:
+
+```{r}
+mu.star
+```
+
+What we in general report is the marginal distribution. To obtain the marginal distribution of $\beta$s, we integrate out $\sigma^2$ from the joint distribution: $$f(\beta | y) = \int^\infty_0 f(\beta, \sigma^2| y) d \sigma^2 =
+   f_t\left(\nu, {\mu^*} , \frac{a^*}{d^*}{\Sigma}^*\right)$$
+
+
+While the point estimates of $\beta$s are unaffected, the standard error is obtained from: $\frac{a^*}{d^*}{\Sigma}^*$:
+
+```{r warning=FALSE}
+sqrt(diag(sigma.star) * a.star/d.star)
+```
+
+We can now compare this result with the results based on the OLS estimator:
+
+
+```{r}
+summary(lm(y  ~ x))
+```
+
+
