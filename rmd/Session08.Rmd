@@ -1,0 +1,429 @@
+---
+title: "Session08"
+author: "Susumu Shikano"
+date: "Last compiled at `r format(Sys.Date(), '%d. %B %Y')`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+We read again the dataset of the exam results:
+
+```{r}
+load("../data/Statistics_Exam_Anonymous.RData")
+
+
+y <- exam.anonym$points[!is.na(exam.anonym$points)]
+x <- exam.anonym$worksheet_submitted[!is.na(exam.anonym$points)]
+x.mat <- cbind(1,x)
+
+```
+
+
+## OLS results
+
+We can first check the conventional OLS-results. First we can use the ready made function $lm()$:
+
+```{r}
+ols.out <- lm(y ~ x)
+summary(ols.out)
+
+```
+
+
+We can obtain the same results in the following hand-rolled code:
+
+```{r}
+
+x.mat<- cbind(1, x) # independent var 
+
+n<-length(y)
+p<-ncol(x.mat)-1
+
+xy<-t(x.mat)%*%y                  # X'Y
+xxi<-solve(t(x.mat)%*%x.mat)          #(X'X)^(-1)
+b<-as.vector(xxi%*%xy)        #estimated coefficients
+#b<- solve(t(x.mat)%*%x.mat)%*%t(x.mat)%*%y  #estimated coefficients in one step
+
+yhat<-as.vector(x.mat%*%b)        #predicted values for y
+res<-y-yhat                   #model residuals
+
+s2<- sum(res^2)/(n-p-1)  # sum(res^2)/degrees of freedom for error
+b.standard.errors<-sqrt(diag(xxi))*sqrt(s2)  #coefficient standard errors
+
+#Call the Estimates
+b
+b.standard.errors
+
+#additional information
+
+# sst<-sum((y-mean(y))^2)       #Total sum of sqares
+# sse<-t(res)%*%res             #or sum(res^2) which is also t(res)%*%res
+# ssm<-sst-sse                  #sum of squares for model (regression)
+# 
+# df.e<-(n-p-1)                 #degrees of freedom for error
+# df.t<-(n-1)                   #total degrees of freedom
+# df.m<-df.t-df.e               #degrees of freedom for model
+# 
+# s2<-as.vector(sse/df.e) # or (t(res)%*%res)?(n-p-1)
+# sigma2<-as.vector(sse/(n-p))
+# r2<-1-(sse/sst)
+# r2.adj<-1-((sse/df.e)/(sst/df.t))
+# aic<-n*log(sse/n)+2*(p+1)
+# cp<-(sse/s2)-(n-2*(p+1))
+# f<-(ssm/df.m)/(sse/df.e)
+# pvalue<-1-pf(f,df.m,df.e)
+
+# b.t.statistic<-b/b.standard.errors           #t statistic for st. errors
+# b.t.prob<-2*(1-pt(b.t.statistic,df.e))       #alpha 0.05
+
+```
+
+
+## Bayesian regression
+
+From here, we switch to the Bayesian estimator. First, we rely on conjugacy analysis.
+
+### Conjugacy analysis
+
+First, we specify prior using normal-inverse-gamma distribution
+
+
+Let's set up the prior:
+
+```{r}
+
+mu0 <- c(0,0)
+
+sigma0 <- rbind(c(10000,    0),
+                c(0,    10000))
+
+a0 <- 0.000001
+d0 <- 0.000001
+```
+
+
+Based on the prior and data, we can obtain posterior $f(\beta,\sigma^2 | y )= f_{N-\Gamma^{-1}}({\mu^*}, {\Sigma^*}, a^*, d^*) $ with:
+
+* $\mu^* = (\Sigma_0^{-1} + x' x )^{-1} ({\Sigma_0^{-1}} {\mu_0}  + x' y )$
+
+```{r}
+print(mu.star <- solve(solve(sigma0) + t(x.mat)%*%x.mat )%*% (solve(sigma0)%*%mu0 + t(x.mat)%*%y))
+
+```
+
+
+* $ \Sigma^{*} = (\Sigma^{-1}_0 + x' x )^{-1} $
+
+```{r}
+print(sigma.star <- solve(solve(sigma0) + t(x.mat)%*%x.mat ))
+
+```
+
+* $a^* = a_0 + \frac{1}{2}( {\mu'_0} {\Sigma}_0^{-1} {\mu_0} + y'y - {\mu^{*'}} {\Sigma}^{*-1} {\mu^*} )$
+
+```{r}
+print(a.star <- a0 + 0.5*(t(mu0)%*%solve(sigma0)%*%mu0 + t(y)%*%y  - t(mu.star) %*%solve(sigma.star)%*%mu.star))
+
+```
+
+* $d^* = d_0 + \frac{n}{2}$
+
+
+```{r}
+print(d.star <- d0 + n/2)
+
+```
+
+Here, we have posterior mean for $\beta_0$ and $\beta_1$ in the joint distribution:
+
+```{r}
+as.vector(mu.star)
+```
+
+
+
+What we in general report is the marginal distribution. To obtain the marginal distribution of $\beta$s, we integrate out $\sigma^2$ from the joint distribution: $$f(\beta | y) = \int^\infty_0 f(\beta, \sigma^2| y) d \sigma^2 =
+   f_t\left(\nu, {\mu^*} , \frac{a^*}{d^*}{\Sigma}^*\right)$$
+
+
+While the point estimates of $\beta$s are unaffected, the standard error is obtained from: $\frac{a^*}{d^*}{\Sigma}^*$:
+
+```{r warning=FALSE}
+sqrt(diag(sigma.star) * a.star/d.star)
+```
+
+
+### Regression analysis via MCMC
+
+In this subsection, we estimate the same regression model by using MCMC, more specifically by
+using the Gibbs sampling technique.
+
+To do this, we can use the same prior of the conjugacy analysis above. Here, howevever, we ignore the covariance between $\mu_0$ and $\mu_1$.
+
+
+```{r}
+# beta0
+mu0
+diag(sigma0)
+a0
+d0
+
+```
+
+Next, we prepare the starting values in the matrix in which we store all draws from the posterior distribution:
+
+```{r}
+n.iter <- 1000
+
+post.mat<- matrix(NA, nrow=n.iter+1, ncol=3)
+colnames(post.mat)<- c("beta0", "beta1", "sigma.sq")
+
+# initial value
+post.mat[1,]<- c(NA, 0, 1) 
+
+```
+
+Now we can run the Markov chain with `r n.iter` iterations. 
+
+
+```{r}
+for(i in 1:n.iter){
+  
+  # updating beta0
+  V0_star <- solve(1/sigma0[1,1] + n/post.mat[i,3])
+  mu0_star<- V0_star *(mu0[1]/sigma0[1,1] + (sum(y-(post.mat[i,2]*x.mat[,2]))/post.mat[i,3]))
+  post.mat[i+1,1]<- rnorm(1, mu0_star, sqrt(V0_star)) #update posterior
+  
+  # beta1
+  V1_star <- solve(1/sigma0[2,2] + sum(x.mat[,2]^2)/post.mat[i,3])
+  mu1_star<- V1_star *(mu0[1]/sigma0[2,2] + (sum((y-post.mat[i+1,1])*x.mat[,2])/post.mat[i,3]))
+  post.mat[i+1,2] <- rnorm(1, mu1_star, sqrt(V1_star)) #update posterior
+  
+  #sigma^2
+  a_star<- a0 + (0.5*(sum((y -post.mat[i+1,1] -(post.mat[i+1,2]*x.mat[,2]))^2)))
+  d_star<- d0+(n/2)
+  post.mat[i+1,3]<- 1/rgamma(1,rate=a_star,shape=d_star) #update posterior
+  
+}
+
+
+head(post.mat)
+```
+
+
+You can now visualize the Markov chains in the joint distributions: 
+
+```{r}
+
+par(mfrow=c(1,3))
+
+#plotting joint distribution
+
+axis.label <- c(expression(beta[0]),
+                expression(beta[1]),
+                expression(sigma^2))
+                
+for (i.x in 1:2){
+  for (i.y in (i.x+1):3){
+  
+    this.x <- post.mat[,i.x]; x.range <- range(this.x,na.rm=T)
+    this.y <- post.mat[,i.y]; y.range <- range(this.y)
+    
+    plot(this.x, this.y, type="s", 
+         xlab=axis.label[i.x], 
+         ylab=axis.label[i.y], 
+         ylim=y.range, xlim=x.range, axes=T)
+
+  }
+}
+
+```
+
+
+For each individual parameter (that is each column in the matrix), we can trace the chain:
+
+```{r}
+
+par(mfrow=c(1,3))
+
+#tracing individual markov chains
+
+axis.label <- c(expression(beta[0]),
+                expression(beta[1]),
+                expression(sigma^2))
+                
+for (i.y in 1:3){
+  
+    this.y <- post.mat[,i.y]; y.range <- range(this.y,na.rm=T)
+    
+    plot(1:(n.iter+1), this.y, type="l", 
+         xlab="iterations", 
+         ylab=axis.label[i.y], 
+         ylim=y.range, axes=T)
+
+}
+
+```
+
+The figures above shows that we seem to have stationary distribution for all parameters just after some iterations.
+
+```{r}
+n.burnin <- 50
+
+post.mat <- post.mat[-c(1:(n.burnin+1)),]
+```
+
+To reduce the influence of the arbitrarily selected initial values, we can omit the first `r n.burnin` iterations from the posterior matrix. 
+
+Now, we can observe the marginal distribution. This is just the distribution of each individual parameter, or the column in the posterior matrix:
+
+```{r}
+
+par(mfrow=c(1,3))
+
+#plotting marginal distribution
+
+axis.label <- c(expression(beta[0]),
+                expression(beta[1]),
+                expression(sigma^2))
+                
+for (i.x in 1:3){
+  
+    this.x <- post.mat[,i.x]; x.range <- range(this.x,na.rm=T)
+    
+    hist(this.x,
+         main=axis.label[i.x],
+         xlab=""
+         )
+
+}
+
+```
+
+We can also obtain all the possible statistics from the marginal posterior:
+
+* mean
+
+```{r}
+
+apply(post.mat,2,mean)
+
+```
+
+
+* median
+
+```{r}
+
+apply(post.mat,2,median)
+
+```
+
+
+* standard deviation
+
+```{r}
+apply(post.mat,2,sd)
+```
+
+* 95% credible interval 
+
+```{r}
+apply(post.mat,2,quantile,pr=c(0.025,0.975))
+```
+
+If you are interested in more specific results, for example the probability that the slope is steeper than 3, you can just count the number of iterations in which $\beta_1 >3$:
+
+```{r}
+sum(post.mat[,"beta1"]>3)/nrow(post.mat)
+```
+
+### MCMC by using JAGS
+
+Writing the code for MCMC can require much more effort than above if the model has many parameters and get more complicated. Fortunately, multiple tools can enable us to run MCMC more easily than writing the code from zero. 
+
+Below, we will use JAGS. To use JAGS from R, you have to install JAGS on your PC and call "rjags"-package. If your PC does not have JAGS, the below code will give an error message:
+
+```{r}
+library(rjags)
+```
+
+
+The first step is to write the statistical model in JAGS language.
+
+```{r}
+# JAGS Model for a bivariate regression model
+reg.model <- "model{
+  for (i in 1:N){
+    y[i] ~ dnorm(mu[i],tau)
+    mu[i] <- beta0 + beta1 * x[i]
+  }
+  
+  beta0 ~ dnorm(0,0.0001)
+  beta1 ~ dnorm(0,0.0001) 
+  
+  tau ~ dgamma(0.001,0.001) 
+  sigma <- 1/sqrt(tau)
+}"
+```
+
+We prepare the data consistently with the code above. The above code requires the following three components in the dataset: $y$, $x$ and $N$.
+
+```{r}
+
+jags.data <- list(y=y,x=x,N=n)
+
+```
+
+MCMC always needs the intial value. We will run 3 different chains. For each of them, we specify certain value for $\beta_1$. For the other parameters, JAGS automatically generate the initial value. 
+
+```{r}
+# three different intial values for beta1
+jags.inits.1 <- list(beta1=32)
+jags.inits.2 <- list(beta1=50)
+jags.inits.3 <- list(beta1=-10)
+
+```
+
+We compile all the above information into an object. Here, we also specify the number of chains to run:
+
+```{r}
+jags.reg <- jags.model(file=textConnection(reg.model),
+                       inits=list(jags.inits.1,jags.inits.2,jags.inits.3),
+                       data=jags.data, n.chains=3)
+
+```
+
+Now we can run the MCMC:
+
+```{r}
+#update(jags.reg, 2000)
+jags.reg.out <- coda.samples(jags.reg,
+                             variable.names=c("beta0","beta1","sigma"),
+                             n.iter=500, thin=1)
+
+```
+
+In the newly created object, the chains are stored. Below we can observe the results, first some graphics:
+
+```{r}
+plot(jags.reg.out)
+
+```
+
+It is also possible to obtain the summary statistics of the posterior:
+
+```{r}
+summary(jags.reg.out)
+
+```
+
+
+
+
+
+
